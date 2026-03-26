@@ -9,32 +9,29 @@ logging.basicConfig(level=logging.INFO)
 # 🔴 TOKENNI SHU YERGA QO‘YING
 TOKEN = "8688733724:AAEoV0ztlJ5JvTSyGiRYe_vtIN71gLftDjU"
 
-# downloads papka (xatosiz yaratish)
+# papka (xatosiz)
 os.makedirs("downloads", exist_ok=True)
 
-# /start komandasi
+# start komandasi
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🎥 YouTube link yuboring")
 
-# video yuklab olish
+# yuklash funksiyasi
 def download_video(url):
     ydl_opts = {
-        'format': 'best',
+        'format': 'bestvideo+bestaudio/best',
         'outtmpl': 'downloads/%(title)s.%(ext)s',
         'noplaylist': True,
-        'quiet': True
+        'quiet': True,
+        'nocheckcertificate': True,
+        'ignoreerrors': True
     }
-
-    # cookies bo‘lsa qo‘shadi
-    if os.path.exists("cookies.txt"):
-        ydl_opts['cookiefile'] = 'cookies.txt'
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
-        filename = ydl.prepare_filename(info)
-        return filename
+        return ydl.prepare_filename(info)
 
-# link kelganda ishlaydi
+# link kelganda
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text
 
@@ -47,14 +44,16 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         file_path = download_video(url)
 
-        await update.message.reply_video(video=open(file_path, 'rb'))
-
-        os.remove(file_path)
+        if file_path and os.path.exists(file_path):
+            await update.message.reply_video(video=open(file_path, 'rb'))
+            os.remove(file_path)
+        else:
+            await update.message.reply_text("❌ Video topilmadi")
 
     except Exception as e:
         await update.message.reply_text(f"❌ Xatolik:\n{e}")
 
-# botni ishga tushirish
+# bot ishga tushadi
 app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
