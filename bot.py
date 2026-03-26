@@ -1,24 +1,27 @@
 import yt_dlp
 import os
 
+# ================== TELEGRAM BOT TOKEN ==================
+TELEGRAM_TOKEN = "8688733724:AAEoV0ztlJ5JvTSyGiRYe_vtIN71gLftDjU"
+
 def download_video(url):
-    # Yuklab olish joyi (Downloaded_Videos papkasi yaratiladi)
+    # Yuklab olish joyi
     output_dir = os.path.join(os.getcwd(), "Downloaded_Videos")
     os.makedirs(output_dir, exist_ok=True)
 
     ydl_opts = {
         'outtmpl': os.path.join(output_dir, '%(title)s.%(ext)s'),   # Video nomi bilan saqlash
-        'format': 'bestvideo+bestaudio/best',                       # Eng yuqori sifatli video + audio
-        'merge_output_format': 'mp4',                               # Natijani MP4 qilish
+        'format': 'bestvideo+bestaudio/best',                       # Eng yuqori sifat
+        'merge_output_format': 'mp4',                               # MP4 formatida
         'quiet': False,
         'no_warnings': False,
         'ignoreerrors': True,
         
-        # ================== TOKEN / COOKIES SHU YERGA QO'YILADI ==================
-        'cookiefile': 'cookies.txt',  8688733724:AAEoV0ztlJ5JvTSyGiRYe_vtIN71gLftDjU        # ← BU YER TOKEN JOYI (cookies.txt fayli)
+        # ================== YOUTUBE COOKIES ==================
+        'cookiefile': 'cookies.txt',          # cookies.txt faylidan foydalanadi
         
-        # Qo'shimcha yaxshi sozlamalar
-        'concurrent_fragment_downloads': 8,   # Tezroq yuklash
+        # Qo'shimcha sozlamalar
+        'concurrent_fragment_downloads': 8,
         'retries': 10,
     }
 
@@ -30,12 +33,13 @@ def download_video(url):
             ydl.download([url])
         print("✅ Muvaffaqiyatli yuklandi!\n")
     except Exception as e:
-        print(f"❌ Xatolik: {e}\n")
+        print(f"❌ Xatolik yuz berdi: {e}\n")
 
 
 # ====================== DASTURNI ISHGA TUSHIRISH ======================
 if __name__ == "__main__":
     print("=== YouTube Video Yuklovchi ===\n")
+    print(f"Telegram Token: {TELEGRAM_TOKEN[:15]}... (qo'shilgan)\n")
     
     while True:
         url = input("YouTube linkini kiriting (chiqish uchun 'exit' yozing): ").strip()
@@ -46,4 +50,4 @@ if __name__ == "__main__":
         elif url:
             download_video(url)
         else:
-            print("Iltimos, to'g'ri link kiriting!\n")
+            print("Iltimos, link kiriting!\n")
