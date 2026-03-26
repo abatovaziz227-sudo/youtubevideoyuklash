@@ -3,12 +3,11 @@ import os
 import sys
 import time
 
-# ================== TELEGRAM BOT TOKEN ==================
 TELEGRAM_TOKEN = "8688733724:AAEoV0ztlJ5JvTSyGiRYe_vtIN71gLftDjU"
 
 def download_video(url):
-    if not url or not url.startswith(('http://', 'https://')):
-        print("❌ Noto'g'ri link! YouTube linkini to'liq kiriting.\n")
+    if not url or not url.startswith(('http', 'https')):
+        print("❌ Noto'g'ri link! To'liq YouTube linkini kiriting.\n")
         return
 
     output_dir = os.path.join(os.getcwd(), "Downloaded_Videos")
@@ -16,38 +15,46 @@ def download_video(url):
 
     ydl_opts = {
         'outtmpl': os.path.join(output_dir, '%(title)s.%(ext)s'),
-        'format': 'bestvideo[height<=1080]+bestaudio/best',
-        'merge_output_format': 'mp4',
         'quiet': False,
         'no_warnings': False,
         'ignoreerrors': True,
+        
+        # 2026-yil uchun eng yaxshi sozlamalar
+        'format': 'bestvideo[height<=720]+bestaudio/best[height<=720]/best',  # 720p gacha, barqarorroq
+        'merge_output_format': 'mp4',
+        
         'cookiefile': 'cookies.txt',
-        'concurrent_fragment_downloads': 5,
-        'retries': 15,
+        
+        # YouTube bloklarini chetlab o'tish uchun
+        'extractor_args': {'youtube': {'player_client': ['default', 'android', 'web']}},
+        'concurrent_fragment_downloads': 4,
+        'retries': 20,
+        'sleep_interval': 5,          # YouTube bloklamasligi uchun
     }
 
     print(f"📥 Yuklanmoqda: {url}")
-    print("⏳ Yuklash boshlandi, biroz kuting...\n")
+    print("⏳ Yuklash boshlandi... (30-90 soniya vaqt olishi mumkin)\n")
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            title = info.get('title', 'Video') if info else 'Video'
-            print(f"✅ Muvaffaqiyatli yuklandi: {title}\n")
+            if info:
+                title = info.get('title', 'Noma’lum video')
+                print(f"✅ Muvaffaqiyatli yuklandi!\n   📁 {title}\n")
+            else:
+                print("⚠️ Video topildi, lekin yuklanmadi.\n")
     except Exception as e:
-        print(f"❌ Xatolik: {e}\n")
+        print(f"❌ Xatolik: {str(e)[:300]}...\n")
 
 
 # ====================== ASOSIY QISM ======================
 if __name__ == "__main__":
     print("\n=== YouTube Video Yuklovchi ===\n")
-    print(f"Telegram Token: {TELEGRAM_TOKEN[:20]}...\n")
-    
-    # Replit uchun qo'shimcha vaqt berish
-    time.sleep(0.5)
+    print(f"Token: {TELEGRAM_TOKEN[:20]}...\n")
+    time.sleep(0.8)
     
     print("🎥 YouTube linkini yuboring:")
-    print("(Chiqish uchun 'exit' yozing)\n")
+    print("(Chiqish uchun: exit)\n")
 
     try:
         while True:
@@ -56,13 +63,13 @@ if __name__ == "__main__":
             if not url:
                 continue
             if url.lower() == 'exit':
-                print("Dastur tugatildi. Xayr!")
+                print("✅ Dastur tugatildi.")
                 break
                 
             download_video(url)
-            print("🎥 Yana bir link yuboring:\n")
+            print("🎥 Yana link yuboring:\n")
             
     except (EOFError, KeyboardInterrupt):
         print("\nDastur to'xtatildi.")
     except Exception as e:
-        print(f"Kutilmagan xatolik: {e}")
+        print(f"Xatolik: {e}")
