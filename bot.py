@@ -1,84 +1,104 @@
-import yt_dlp
 import os
 import asyncio
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+import time
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.filters import Command
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from yt_dlp import YoutubeDL
 
-# ================== SIZNING TOKENINGIZ ==================
+# Bot tokeningizni kiriting
 TOKEN = "8688733724:AAEoV0ztlJ5JvTSyGiRYe_vtIN71gLftDjU"
 
-# Yuklab olingan videolar saqlanadigan papka
-DOWNLOAD_DIR = "Downloaded_Videos"
-os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "👋 Salom!\n\n"
-        "YouTube (yoki boshqa sayt) linkini yuboring, men uni yuklab beraman.\n"
-        "Masalan: https://youtu.be/..."
-    )
-
-def download_with_yt_dlp(url: str):
-    """yt-dlp yordamida video yuklab olish"""
-    filepath = os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s")
-    
+# Yuklab olish funksiyasi (Kengaytirilgan)
+def download_video(url):
     ydl_opts = {
-        'outtmpl': filepath,
-        'format': 'bestvideo[height<=720]+bestaudio/best[height<=720]/best',
-        'merge_output_format': 'mp4',
+        'format': 'best[ext=mp4]/best',
+        'outtmpl': 'downloads/%(title)s.%(ext)s',
+        'cookiefile': 'cookies.txt',  # GitHubdagi faylingiz
+        'noplaylist': True,
         'quiet': True,
-        'no_warnings': True,
-        'ignoreerrors': True,
-        'cookiefile': 'cookies.txt',                    # cookies.txt bo'lsa ishlatadi
-        'extractor_args': {'youtube': {'player_client': ['android', 'default']}},
-        'concurrent_fragment_downloads': 4,
-        'retries': 10,
     }
+    with YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        return ydl.prepare_filename(info), info.get('title', 'Video')
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-            return filename, info.get('title', 'Video')
-    except Exception as e:
-        return None, str(e)
+# Start komandasi
+@dp.message(Command("start"))
+async def start_handler(message: types.Message):
+    # Tugmalar yaratish
+    builder = InlineKeyboardBuilder()
+    builder.row(types.InlineKeyboardButton(text="Yordam ❓", callback_data="help"))
+    builder.row(types.InlineKeyboardButton(text="Dasturchi 👨‍💻", url="https://t.me/abatovaziz227")) # O'zingizni profilingizni qo'ying
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    url = update.message.text.strip()
+    welcome_text = (
+        f"Assalomu alaykum, {message.from_user.full_name}! 👋\n\n"
+        "Men YouTube-dan video yuklab beruvchi botman.\n\n"
+        "📥 **Video yuklash uchun link yuboring.**\n"
+        "⚠️ *Eslatma: 50MB gacha video, undan kattasi hujjat sifatida yuboriladi.*"
+    )
     
-    if not url.startswith(('http://', 'https://')):
-        await update.message.reply_text("❌ Iltimos, to'g'ri link yuboring!")
-        return
+    await message.answer(welcome_text, reply_markup=builder.as_markup(), parse_mode="Markdown")
 
-    msg = await update.message.reply_text("⏳ Yuklanmoqda... Biroz kuting (20-60 soniya)")
+# Yordam tugmasi uchun
+@dp.callback_query(F.data == "help")
+async def help_callback(callback: types.CallbackQuery):
+    help_text = (
+        "📖 **Botdan foydalanish:**\n"
+        "1. YouTube-dan video linkini nusxalang.\n"
+        "2. Linkni shu yerga yuboring.\n"
+        "3. Bir oz kuting, bot videoni yuboradi.\n\n"
+        "Agar xatolik bo'lsa, link to'g'riligini tekshiring."
+    )
+    await callback.answer()
+    await callback.message.answer(help_text, parse_mode="Markdown")
 
-    # Video yuklash
-    filename, title = download_with_yt_dlp(url)
+# Linklarni ushlash
+@dp.message(F.text.contains("youtube.com") | F.text.contains("youtu.be"))
+async def youtube_download(message: types.Message):
+    status_msg = await message.answer("🔍 **Link tahlil qilinmoqda...**")
+    
+    try:
+        if not os.path.exists('downloads'):
+            os.makedirs('downloads')
 
-    if filename and os.path.exists(filename):
-        try:
-            await msg.edit_text(f"✅ Yuklandi: {title}\n\n📤 Telegramga yuborilmoqda...")
-            await update.message.reply_video(
-                video=open(filename, 'rb'),
-                caption=f"🎥 {title}",
-                supports_streaming=True
+        url = message.text
+        loop = asyncio.get_event_loop()
+        
+        await status_msg.edit_text("📥 **Serverga yuklab olinmoqda...**")
+        file_path, title = await loop.run_in_executor(None, download_video, url)
+
+        file_size = os.path.getsize(file_path) / (1024 * 1024) # MB
+
+        await status_msg.edit_text("📤 **Telegramga yuborilmoqda...**")
+        
+        video_file = types.FSInputFile(file_path)
+        
+        if file_size > 50:
+            await message.answer_document(
+                video_file, 
+                caption=f"🎬 **{title}**\n\n⚖️ Hajmi: {file_size:.2f} MB\n✅ @SizningBot_nomi"
             )
-            os.remove(filename)  # Yuklab bo'lgach o'chirish
-        except Exception as e:
-            await msg.edit_text(f"❌ Video yuborishda xatolik: {e}")
-    else:
-        await msg.edit_text(f"❌ Yuklab bo'lmadi.\nXatolik: {title[:500]}")
+        else:
+            await message.answer_video(
+                video=video_file, 
+                caption=f"🎬 **{title}**\n✅ @SizningBot_nomi"
+            )
 
-# ====================== BOTNI ISHGA TUSHIRISH ======================
-def main():
-    print("🤖 Bot ishga tushmoqda...")
-    app = Application.builder().token(TOKEN).build()
+        await status_msg.delete()
+        os.remove(file_path)
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    except Exception as e:
+        await status_msg.edit_text(f"❌ **Xatolik yuz berdi:**\n`{str(e)[:100]}`", parse_mode="Markdown")
+        if 'file_path' in locals() and os.path.exists(file_path):
+            os.remove(file_path)
 
-    print("✅ Bot muvaffaqiyatli ishga tushdi! Telegramda sinab ko'ring.")
-    app.run_polling()
+# Botni yurgizish
+async def main():
+    print("Bot ishga tushdi...")
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
