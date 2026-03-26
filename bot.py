@@ -9,15 +9,14 @@ logging.basicConfig(level=logging.INFO)
 # 🔴 TOKENNI SHU YERGA QO‘YING
 TOKEN = "8688733724:AAEoV0ztlJ5JvTSyGiRYe_vtIN71gLftDjU"
 
-# downloads papka yaratish
-if not os.path.exists("downloads"):
-    os.makedirs("downloads")
+# downloads papka (xatosiz yaratish)
+os.makedirs("downloads", exist_ok=True)
 
 # /start komandasi
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🎥 YouTube link yuboring")
 
-# video yuklash funksiyasi
+# video yuklab olish
 def download_video(url):
     ydl_opts = {
         'format': 'best',
@@ -35,7 +34,7 @@ def download_video(url):
         filename = ydl.prepare_filename(info)
         return filename
 
-# link kelganda
+# link kelganda ishlaydi
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text
 
@@ -62,4 +61,4 @@ app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
 
 print("✅ Bot ishga tushdi")
-app.run_polling()
+app.run_polling()run_polling()
