@@ -3,7 +3,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 import yt_dlp
 import os
 
-TOKEN = os.getenv("8424991362:AAGTzrYZBVXM9RWDE6LN5HsnFerJecSzyRw")
+TOKEN = os.getenv("8688733724:AAEoV0ztlJ5JvTSyGiRYe_vtIN71gLftDjU")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Link yuboring")
