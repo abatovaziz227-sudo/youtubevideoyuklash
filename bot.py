@@ -1,75 +1,84 @@
 import yt_dlp
 import os
-import sys
-import time
+import asyncio
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-TELEGRAM_TOKEN = "8688733724:AAEoV0ztlJ5JvTSyGiRYe_vtIN71gLftDjU"
+# ================== SIZNING TOKENINGIZ ==================
+TOKEN = "8688733724:AAEoV0ztlJ5JvTSyGiRYe_vtIN71gLftDjU"
 
-def download_video(url):
-    if not url or not url.startswith(('http', 'https')):
-        print("❌ Noto'g'ri link! To'liq YouTube linkini kiriting.\n")
-        return
+# Yuklab olingan videolar saqlanadigan papka
+DOWNLOAD_DIR = "Downloaded_Videos"
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-    output_dir = os.path.join(os.getcwd(), "Downloaded_Videos")
-    os.makedirs(output_dir, exist_ok=True)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "👋 Salom!\n\n"
+        "YouTube (yoki boshqa sayt) linkini yuboring, men uni yuklab beraman.\n"
+        "Masalan: https://youtu.be/..."
+    )
 
+def download_with_yt_dlp(url: str):
+    """yt-dlp yordamida video yuklab olish"""
+    filepath = os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s")
+    
     ydl_opts = {
-        'outtmpl': os.path.join(output_dir, '%(title)s.%(ext)s'),
-        'quiet': False,
-        'no_warnings': False,
-        'ignoreerrors': True,
-        
-        # 2026-yil uchun eng yaxshi sozlamalar
-        'format': 'bestvideo[height<=720]+bestaudio/best[height<=720]/best',  # 720p gacha, barqarorroq
+        'outtmpl': filepath,
+        'format': 'bestvideo[height<=720]+bestaudio/best[height<=720]/best',
         'merge_output_format': 'mp4',
-        
-        'cookiefile': 'cookies.txt',
-        
-        # YouTube bloklarini chetlab o'tish uchun
-        'extractor_args': {'youtube': {'player_client': ['default', 'android', 'web']}},
+        'quiet': True,
+        'no_warnings': True,
+        'ignoreerrors': True,
+        'cookiefile': 'cookies.txt',                    # cookies.txt bo'lsa ishlatadi
+        'extractor_args': {'youtube': {'player_client': ['android', 'default']}},
         'concurrent_fragment_downloads': 4,
-        'retries': 20,
-        'sleep_interval': 5,          # YouTube bloklamasligi uchun
+        'retries': 10,
     }
-
-    print(f"📥 Yuklanmoqda: {url}")
-    print("⏳ Yuklash boshlandi... (30-90 soniya vaqt olishi mumkin)\n")
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            if info:
-                title = info.get('title', 'Noma’lum video')
-                print(f"✅ Muvaffaqiyatli yuklandi!\n   📁 {title}\n")
-            else:
-                print("⚠️ Video topildi, lekin yuklanmadi.\n")
+            filename = ydl.prepare_filename(info)
+            return filename, info.get('title', 'Video')
     except Exception as e:
-        print(f"❌ Xatolik: {str(e)[:300]}...\n")
+        return None, str(e)
 
-
-# ====================== ASOSIY QISM ======================
-if __name__ == "__main__":
-    print("\n=== YouTube Video Yuklovchi ===\n")
-    print(f"Token: {TELEGRAM_TOKEN[:20]}...\n")
-    time.sleep(0.8)
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    url = update.message.text.strip()
     
-    print("🎥 YouTube linkini yuboring:")
-    print("(Chiqish uchun: exit)\n")
+    if not url.startswith(('http://', 'https://')):
+        await update.message.reply_text("❌ Iltimos, to'g'ri link yuboring!")
+        return
 
-    try:
-        while True:
-            url = sys.stdin.readline().strip()
-            
-            if not url:
-                continue
-            if url.lower() == 'exit':
-                print("✅ Dastur tugatildi.")
-                break
-                
-            download_video(url)
-            print("🎥 Yana link yuboring:\n")
-            
-    except (EOFError, KeyboardInterrupt):
-        print("\nDastur to'xtatildi.")
-    except Exception as e:
-        print(f"Xatolik: {e}")
+    msg = await update.message.reply_text("⏳ Yuklanmoqda... Biroz kuting (20-60 soniya)")
+
+    # Video yuklash
+    filename, title = download_with_yt_dlp(url)
+
+    if filename and os.path.exists(filename):
+        try:
+            await msg.edit_text(f"✅ Yuklandi: {title}\n\n📤 Telegramga yuborilmoqda...")
+            await update.message.reply_video(
+                video=open(filename, 'rb'),
+                caption=f"🎥 {title}",
+                supports_streaming=True
+            )
+            os.remove(filename)  # Yuklab bo'lgach o'chirish
+        except Exception as e:
+            await msg.edit_text(f"❌ Video yuborishda xatolik: {e}")
+    else:
+        await msg.edit_text(f"❌ Yuklab bo'lmadi.\nXatolik: {title[:500]}")
+
+# ====================== BOTNI ISHGA TUSHIRISH ======================
+def main():
+    print("🤖 Bot ishga tushmoqda...")
+    app = Application.builder().token(TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    print("✅ Bot muvaffaqiyatli ishga tushdi! Telegramda sinab ko'ring.")
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
