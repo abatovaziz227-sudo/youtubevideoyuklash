@@ -6,8 +6,8 @@ import sys
 TELEGRAM_TOKEN = "8688733724:AAEoV0ztlJ5JvTSyGiRYe_vtIN71gLftDjU"
 
 def download_video(url):
-    if not url or not url.startswith("http"):
-        print("❌ Noto'g'ri link! YouTube linkini kiriting.")
+    if not url or not url.startswith(('http://', 'https://')):
+        print("❌ Noto'g'ri link! YouTube linkini to'liq kiriting.\n")
         return
 
     # Yuklab olish joyi
@@ -23,14 +23,14 @@ def download_video(url):
         'ignoreerrors': True,
         
         # ================== COOKIES ==================
-        'cookiefile': 'cookies.txt',          # cookies.txt fayli shu papkada bo'lishi kerak
+        'cookiefile': 'cookies.txt',
         
         'concurrent_fragment_downloads': 8,
         'retries': 10,
     }
 
     print(f"📥 Yuklanmoqda: {url}")
-    print("⏳ Biroz kuting...")
+    print("⏳ Yuklash boshlandi, biroz kuting...\n")
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -40,25 +40,30 @@ def download_video(url):
         print(f"❌ Xatolik yuz berdi: {e}\n")
 
 
-# ====================== ASOSIY QISM ======================
+# ====================== DASTURNI ISHGA TUSHIRISH ======================
 if __name__ == "__main__":
     print("=== YouTube Video Yuklovchi ===\n")
     print(f"Telegram Token: {TELEGRAM_TOKEN[:15]}... (qo‘shilgan)\n")
     
-    # Replit va deploy muhitlari uchun xavfsiz input
+    print("🎥 YouTube linkini yuboring:")
+    
     try:
         while True:
-            print("\nYouTube linkini kiriting (chiqish uchun 'exit' yozing): ", end="", flush=True)
+            # Foydalanuvchidan linkni olish
             url = sys.stdin.readline().strip()
             
-            if not url:  # Bo'sh qator bo'lsa davom ettirish
+            if not url:        # Bo'sh qator bo'lsa davom ettir
                 continue
                 
             if url.lower() == 'exit':
                 print("Dastur tugatildi. Xayr!")
                 break
                 
+            # Linkni yuklash
             download_video(url)
+            
+            # Keyingi linkni so'rash
+            print("🎥 Yana bir YouTube linkini yuboring (chiqish uchun 'exit' yozing):")
             
     except (EOFError, KeyboardInterrupt):
         print("\n\nDastur to'xtatildi.")
