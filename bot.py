@@ -15,9 +15,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def download_video(url):
     ydl_opts = {
-        # 🔥 ENG MUHIM QATOR (fallback)
         'format': 'bestvideo+bestaudio/best',
-        
         'outtmpl': 'downloads/%(title)s.%(ext)s',
         'noplaylist': True,
         'quiet': True,
@@ -27,6 +25,11 @@ def download_video(url):
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
+
+        # ❗ ENG MUHIM TEKSHIRUV
+        if info is None:
+            return None
+
         return ydl.prepare_filename(info)
 
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -41,11 +44,13 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         file_path = download_video(url)
 
-        if file_path and os.path.exists(file_path):
-            await update.message.reply_video(video=open(file_path, 'rb'))
-            os.remove(file_path)
-        else:
-            await update.message.reply_text("❌ Video yuklab bo‘lmadi")
+        # ❗ None bo‘lsa
+        if not file_path or not os.path.exists(file_path):
+            await update.message.reply_text("❌ Video yuklab bo‘lmadi (blok yoki format yo‘q)")
+            return
+
+        await update.message.reply_video(video=open(file_path, 'rb'))
+        os.remove(file_path)
 
     except Exception as e:
         await update.message.reply_text(f"❌ Xatolik:\n{e}")
