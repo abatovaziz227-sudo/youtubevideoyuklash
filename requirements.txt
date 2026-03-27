@@ -1,5 +1,4 @@
-aiogram==3.7.0
-pydantic-core==2.18.4
+aiogram>=3.0.0
 instaloader
 moviepy
 python-dotenv
