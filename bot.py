@@ -1,53 +1,88 @@
 import logging
 import re
 import os
+import asyncio
 from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
 from aiogram.types import Message
-from aiogram.utils import executor
+from dotenv import load_dotenv
 import instaloader
 from moviepy.editor import VideoFileClip
 
-API_TOKEN = "8424991362:AAGTzrYZBVXM9RWDE6LN5HsnFerJecSzyRw"
+# ENV yuklash
+load_dotenv()
+API_TOKEN = os.getenv("8424991362:AAGTzrYZBVXM9RWDE6LN5HsnFerJecSzyRw")
 
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=API_TOKEN)
-dp = Dispatcher(bot)
+dp = Dispatcher()
 
 L = instaloader.Instaloader()
 
-@dp.message_handler(commands=['start'])
+# /start komandasi
+@dp.message(Command("start"))
 async def start(message: Message):
-    await message.reply("Instagram link yuboring, men musiqasini ajratib beraman 🎵")
+    await message.answer("Instagram link yuboring, men musiqasini ajratib beraman 🎵")
 
-@dp.message_handler(lambda message: "instagram.com" in message.text)
+# Link orqali audio olish
+@dp.message()
 async def get_audio(message: Message):
-    url = message.text.strip()
+    text = message.text
 
-    await message.reply("⏳ Yuklanmoqda...")
+    if "instagram.com" not in text:
+        return
+
+    await message.answer("⏳ Yuklanmoqda...")
 
     try:
+        url = text.strip()
+
+        # shortcode olish
         shortcode = re.search(r"/(reel|p|tv)/([^/]+)/", url).group(2)
         post = instaloader.Post.from_shortcode(L.context, shortcode)
 
+        # temp papka
+        if not os.path.exists("temp"):
+            os.makedirs("temp")
+
+        # yuklash
         L.download_post(post, target="temp")
 
-        video_path = f"temp/{post.shortcode}.mp4"
-        audio_path = f"temp/{post.shortcode}.mp3"
+        video_path = None
 
+        # mp4 ni topish
+        for file in os.listdir("temp"):
+            if file.endswith(".mp4"):
+                video_path = f"temp/{file}"
+                break
+
+        if not video_path:
+            await message.answer("❌ Video topilmadi")
+            return
+
+        audio_path = video_path.replace(".mp4", ".mp3")
+
+        # audio ajratish
         clip = VideoFileClip(video_path)
         clip.audio.write_audiofile(audio_path)
 
-        await message.reply_audio(open(audio_path, "rb"))
+        await message.answer_audio(types.FSInputFile(audio_path))
 
         clip.close()
+
+        # tozalash
         os.remove(video_path)
         os.remove(audio_path)
 
-        await message.reply("✅ Tayyor!")
+        await message.answer("✅ Tayyor!")
 
     except Exception as e:
-        await message.reply(f"❌ Xatolik: {e}")
+        await message.answer(f"❌ Xatolik: {e}")
 
-if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
+# botni ishga tushirish
+async def main():
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
