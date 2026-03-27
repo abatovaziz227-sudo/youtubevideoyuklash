@@ -3,16 +3,18 @@ import re
 import os
 import asyncio
 from aiogram import Bot, Dispatcher
-from aiogram.types import Message
+from aiogram.types import Message, FSInputFile
 from aiogram.filters import Command
-from aiogram.types import FSInputFile
 from dotenv import load_dotenv
 import instaloader
-from moviepy.editor import VideoFileClip
+from moviepy import VideoFileClip
 
 # ENV yuklash
 load_dotenv()
 API_TOKEN = os.getenv("8424991362:AAGTzrYZBVXM9RWDE6LN5HsnFerJecSzyRw")
+
+if not API_TOKEN:
+    raise ValueError("BOT_TOKEN topilmadi .env faylda!")
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,7 +26,7 @@ L = instaloader.Instaloader()
 # START
 @dp.message(Command("start"))
 async def start(message: Message):
-    await message.answer("Instagram link yuboring, men musiqasini ajratib beraman 🎵")
+    await message.answer("📥 Instagram link yuboring\nMen musiqasini ajratib beraman 🎵")
 
 # AUDIO OLISH
 @dp.message()
@@ -42,15 +44,14 @@ async def get_audio(message: Message):
         # shortcode olish
         match = re.search(r"/(reel|p|tv)/([^/]+)/", url)
         if not match:
-            await message.answer("❌ Noto‘g‘ri link")
+            await message.answer("❌ Noto‘g‘ri link yubordingiz")
             return
 
         shortcode = match.group(2)
         post = instaloader.Post.from_shortcode(L.context, shortcode)
 
         # temp papka
-        if not os.path.exists("temp"):
-            os.makedirs("temp")
+        os.makedirs("temp", exist_ok=True)
 
         # yuklash
         L.download_post(post, target="temp")
@@ -60,7 +61,7 @@ async def get_audio(message: Message):
         # mp4 topish
         for file in os.listdir("temp"):
             if file.endswith(".mp4"):
-                video_path = f"temp/{file}"
+                video_path = os.path.join("temp", file)
                 break
 
         if not video_path:
@@ -69,17 +70,22 @@ async def get_audio(message: Message):
 
         audio_path = video_path.replace(".mp4", ".mp3")
 
-        # audio ajratish
-        clip = VideoFileClip(video_path)
-        clip.audio.write_audiofile(audio_path)
+        # 🎵 Audio ajratish (MoviePy 2.0+)
+        with VideoFileClip(video_path) as clip:
+            if clip.audio is None:
+                await message.answer("❌ Audio topilmadi")
+                return
+            clip.audio.write_audiofile(audio_path)
 
+        # yuborish
         await message.answer_audio(FSInputFile(audio_path))
 
-        clip.close()
-
         # tozalash
-        os.remove(video_path)
-        os.remove(audio_path)
+        try:
+            os.remove(video_path)
+            os.remove(audio_path)
+        except:
+            pass
 
         await message.answer("✅ Tayyor!")
 
