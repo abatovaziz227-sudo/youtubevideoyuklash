@@ -7,7 +7,7 @@ from aiogram.utils import executor
 import instaloader
 from moviepy.editor import VideoFileClip
 
-API_TOKEN = "8577880682:AAHOD8897USHI4I2XEhGZ8Ter51l05QtHCM"
+API_TOKEN = "8424991362:AAGTzrYZBVXM9RWDE6LN5HsnFerJecSzyRw"
 
 logging.basicConfig(level=logging.INFO)
 
