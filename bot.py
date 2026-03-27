@@ -2,9 +2,10 @@ import logging
 import re
 import os
 import asyncio
-from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
+from aiogram import Bot, Dispatcher
 from aiogram.types import Message
+from aiogram.filters import Command
+from aiogram.types import FSInputFile
 from dotenv import load_dotenv
 import instaloader
 from moviepy.editor import VideoFileClip
@@ -20,17 +21,17 @@ dp = Dispatcher()
 
 L = instaloader.Instaloader()
 
-# /start komandasi
+# START
 @dp.message(Command("start"))
 async def start(message: Message):
     await message.answer("Instagram link yuboring, men musiqasini ajratib beraman 🎵")
 
-# Link orqali audio olish
+# AUDIO OLISH
 @dp.message()
 async def get_audio(message: Message):
     text = message.text
 
-    if "instagram.com" not in text:
+    if not text or "instagram.com" not in text:
         return
 
     await message.answer("⏳ Yuklanmoqda...")
@@ -39,7 +40,12 @@ async def get_audio(message: Message):
         url = text.strip()
 
         # shortcode olish
-        shortcode = re.search(r"/(reel|p|tv)/([^/]+)/", url).group(2)
+        match = re.search(r"/(reel|p|tv)/([^/]+)/", url)
+        if not match:
+            await message.answer("❌ Noto‘g‘ri link")
+            return
+
+        shortcode = match.group(2)
         post = instaloader.Post.from_shortcode(L.context, shortcode)
 
         # temp papka
@@ -51,7 +57,7 @@ async def get_audio(message: Message):
 
         video_path = None
 
-        # mp4 ni topish
+        # mp4 topish
         for file in os.listdir("temp"):
             if file.endswith(".mp4"):
                 video_path = f"temp/{file}"
@@ -67,7 +73,7 @@ async def get_audio(message: Message):
         clip = VideoFileClip(video_path)
         clip.audio.write_audiofile(audio_path)
 
-        await message.answer_audio(types.FSInputFile(audio_path))
+        await message.answer_audio(FSInputFile(audio_path))
 
         clip.close()
 
@@ -80,7 +86,7 @@ async def get_audio(message: Message):
     except Exception as e:
         await message.answer(f"❌ Xatolik: {e}")
 
-# botni ishga tushirish
+# RUN
 async def main():
     await dp.start_polling(bot)
 
