@@ -2,56 +2,60 @@ import os
 import instaloader
 from aiogram import Bot, Dispatcher, types, executor
 
-# 1. BOT TOKENINGIZNI SHU YERGA YOZING (tirnoq ichida!)
+# 1. BOT TOKENINGIZNI SHU YERGA QO'YING
 API_TOKEN = "8424991362:AAGTzrYZBVXM9RWDE6LN5HsnFerJecSzyRw" 
 
-# Bot va Dispatcher obyektlarini yaratamiz
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
-
-# Instagram ma'lumotlarini yuklovchi obyekt
 loader = instaloader.Instaloader()
 
-@dp.message_handler(commands=['start', 'help'])
+@dp.message_handler(commands=['start'])
 async def send_welcome(message: types.Message):
     await message.reply(
-        "👋 Salom! Men Instagram profil rasmini yuklab beruvchi botman.\n\n"
-        "Menga profil **username**ini (masalan: `cristiano`) yuboring."
+        "👋 Salom! Menga Instagram profil havolasini (URL) yuboring.\n"
+        "Men sizga o'sha profilning rasmini yuboraman."
     )
 
 @dp.message_handler()
 async def get_profile_pic(message: types.Message):
     user_input = message.text.strip()
     
-    # Instagram linkidan username'ni ajratib olish (agar link yuborilsa)
+    # Havoladan (URL) username'ni ajratib olish
+    # Masalan: https://www.instagram.com/username/ -> username
     if "instagram.com/" in user_input:
-        username = user_input.split("instagram.com/")[1].split("/")[0].split("?")[0]
+        try:
+            # URL'ni bo'laklarga bo'lib, username qismini olamiz
+            parts = user_input.split("instagram.com/")[1].split("/")
+            username = parts[0].split("?")[0] # Parametrlarni olib tashlaymiz
+        except IndexError:
+            await message.answer("❌ Havola noto'g'ri shaklda.")
+            return
     else:
+        # Agar shunchaki username yozilsa
         username = user_input.replace("@", "")
 
-    status_msg = await message.answer("🔍 Profil qidirilmoqda...")
+    msg = await message.answer("🔄 Profil rasmi qidirilmoqda...")
 
     try:
-        # Profil ma'lumotlarini yuklash
+        # Instaloader orqali profilni yuklash
         profile = instaloader.Profile.from_username(loader.context, username)
         
-        # Profil rasmi URL manzilini olish
+        # Profil rasmining URL manzilini olish
         photo_url = profile.profile_pic_url
         
-        # Ma'lumotlarni yuborish
-        caption_text = (
+        # Rasmni foydalanuvchiga yuborish
+        caption = (
             f"👤 **Ism:** {profile.full_name}\n"
             f"🆔 **Username:** @{username}\n"
-            f"👥 **Obunachilar:** {profile.followers}\n"
+            f"👥 **Obunachilar:** {profile.followers}"
         )
         
-        await message.answer_photo(photo_url, caption=caption_text, parse_mode="Markdown")
-        await status_msg.delete()
+        await message.answer_photo(photo_url, caption=caption, parse_mode="Markdown")
+        await msg.delete()
 
     except Exception as e:
-        await status_msg.edit_text("❌ Xatolik: Profil topilmadi yoki Instagram cheklov qo'ydi.")
-        print(f"Xato tafsiloti: {e}")
+        await msg.edit_text("❌ Xato: Bunday profil topilmadi yoki havola noto'g'ri.")
+        print(f"Xato: {e}")
 
 if __name__ == '__main__':
-    # Botni ishga tushirish
     executor.start_polling(dp, skip_updates=True)
