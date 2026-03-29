@@ -1,33 +1,58 @@
+import os
 import instaloader
-from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
+from aiogram import Bot, Dispatcher, types, executor
 
-TOKEN = "8424991362:AAGTzrYZBVXM9RWDE6LN5HsnFerJecSzyRw"
+# Muhim: Hosting panelida (Environment Variables) BOT_TOKEN nomli o'zgaruvchi yarating
+API_TOKEN = os.getenv("8424991362:AAGTzrYZBVXM9RWDE6LN5HsnFerJecSzyRw")
 
-L = instaloader.Instaloader()
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot)
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
+# Instaloader obyektini yaratamiz
+loader = instaloader.Instaloader()
 
-    if "instagram.com" in text:
-        username = text.rstrip("/").split("/")[-1]
+@dp.message_handler(commands=['start', 'help'])
+async def send_welcome(message: types.Message):
+    await message.reply(
+        "👋 Salom! Men Instagram profil rasmini yuklab beruvchi botman.\n\n"
+        "Menga profil **username**ini yoki **link**ini yuboring."
+    )
+
+@dp.message_handler()
+async def get_profile_pic(message: types.Message):
+    user_input = message.text.strip()
+    
+    # Agar foydalanuvchi link yuborsa, undan username'ni ajratib olamiz
+    if "instagram.com/" in user_input:
+        username = user_input.split("instagram.com/")[1].split("/")[0].split("?")[0]
     else:
-        username = text
+        username = user_input.replace("@", "")
+
+    status_msg = await message.answer("🔍 Profil qidirilmoqda...")
 
     try:
-        profile = instaloader.Profile.from_username(L.context, username)
+        # Profil ma'lumotlarini olish
+        profile = instaloader.Profile.from_username(loader.context, username)
+        
+        # Profil rasmi URL manzilini olish
+        photo_url = profile.profile_pic_url
+        
+        # Rasmni bot orqali yuborish
+        caption_text = (
+            f"👤 **Ism:** {profile.full_name}\n"
+            f"🆔 **Username:** @{username}\n"
+            f"👥 **Obunachilar:** {profile.followers}\n"
+            f"📝 **Bio:** {profile.biography[:100]}..."
+        )
+        
+        await message.answer_photo(photo_url, caption=caption_text, parse_mode="Markdown")
+        await status_msg.delete()
 
-        L.download_profile(username, profile_pic_only=True)
-
-        file_path = f"{username}/{username}_profile_pic.jpg"
-
-        await update.message.reply_photo(photo=open(file_path, "rb"))
-
+    except instaloader.exceptions.ProfileNotExistsException:
+        await status_msg.edit_text("❌ Bunday profil topilmadi. Username to'g'riligini tekshiring.")
     except Exception as e:
-        await update.message.reply_text("❌ Profil topilmadi yoki yopiq!")
+        await status_msg.edit_text("⚠️ Xatolik yuz berdi. Instagram hozirda so'rovni cheklagan bo'lishi mumkin.")
+        print(f"Xato tafsiloti: {e}")
 
-app = ApplicationBuilder().token(TOKEN).build()
-
-app.add_handler(MessageHandler(filters.TEXT, handle_message))
-
-app.run_polling()
+if __name__ == '__main__':
+    executor.start_polling(dp, skip_updates=True)
