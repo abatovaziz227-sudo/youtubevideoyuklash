@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher, types, executor
 
 # --- 1. SOZLAMALAR ---
 # Bot tokeningizni @BotFather'dan olib bu yerga qo'ying
-API_TOKEN = "8688733724:AAEoV0ztlJ5JvTSyGiRYe_vtIN71gLftDjU" 
+API_TOKEN = "8688733724:AAEPJtvCedbi7ph1DEKI60TXEveHuR-RYh4" 
 
 # Sessiya fayli yaratgan Instagram username'ingiz
 INSTA_USER = "abatovazizbek" 
