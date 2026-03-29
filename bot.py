@@ -3,14 +3,21 @@ import instaloader
 from aiogram import Bot, Dispatcher, types, executor
 
 # --- 1. SOZLAMALAR ---
-API_TOKEN = "8688733724:AAEoV0ztlJ5JvTSyGiRYe_vtIN71gLftDjU" # BotFather'dan olgan tokeningiz
-INSTA_USER = "abatovazizbek"               # Sessiya fayli nomidagi username
+# Bot tokeningizni @BotFather'dan olib bu yerga qo'ying
+API_TOKEN = "8688733724:AAEoV0ztlJ5JvTSyGiRYe_vtIN71gLftDjU" 
+
+# Sessiya fayli yaratgan Instagram username'ingiz
+INSTA_USER = "abatovazizbek" 
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
-loader = instaloader.Instaloader()
 
-# --- 2. SESSİYANI YUKLASH FUNKSIYASI ---
+# Instaloader'ni brauzer kabi ko'rsatish uchun "User-Agent" qo'shamiz
+loader = instaloader.Instaloader(
+    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+)
+
+# --- 2. SESSİYANI YUKLASH ---
 def load_session():
     try:
         # Fayl nomi 'session-username' bo'lishi shart
@@ -21,49 +28,47 @@ def load_session():
             print(f"✅ MUVAFFAQIYAT: {session_file} yuklandi!")
             return True
         else:
-            print(f"⚠️ OGOHLANTIRISH: {session_file} topilmadi. Bot cheklangan rejimda ishlaydi.")
+            print(f"❌ XATO: {session_file} fayli topilmadi!")
             return False
     except Exception as e:
-        print(f"❌ XATO: Sessiya yuklanmadi: {e}")
+        print(f"❌ SESSİYA XATOSI: {e}")
         return False
 
-# Botni yoqishdan oldin sessiyani tekshiramiz
+# Bot ishga tushishidan oldin sessiyani tekshirish
 is_logged_in = load_session()
 
 @dp.message_handler(commands=['start'])
 async def cmd_start(message: types.Message):
     status = "🟢 Tizimga kirilgan" if is_logged_in else "🟡 Loginsiz rejim"
     await message.reply(
-        f"👋 Salom! Instagram profil linkini yuboring.\n\n"
-        f"**Holat:** {status}\n"
-        f"**Vazifa:** Profil rasmini (Avatar) yuklab berish."
+        f"👋 Salom! Instagram profil linkini yoki username'ni yuboring.\n\n"
+        f"**Bot holati:** {status}"
     )
 
 @dp.message_handler()
 async def handle_message(message: types.Message):
-    text = message.text.strip()
+    user_input = message.text.strip()
     
-    # Instagram URL'dan username ajratib olish
-    if "instagram.com/" in text:
+    # Username'ni ajratib olish
+    if "instagram.com/" in user_input:
         try:
-            # https://www.instagram.com/username/ -> username
-            username = text.split("instagram.com/")[1].split("/")[0].split("?")[0]
+            username = user_input.split("instagram.com/")[1].split("/")[0].split("?")[0]
         except:
             await message.answer("❌ Havola noto'g'ri shaklda.")
             return
     else:
-        username = text.replace("@", "")
+        username = user_input.replace("@", "")
 
     status_msg = await message.answer("🔍 Profil qidirilmoqda...")
 
     try:
-        # Profilni yuklash
+        # Instagram'dan profil ma'lumotlarini olish
         profile = instaloader.Profile.from_username(loader.context, username)
         
         # Profil rasmi URL manzilini olish
         photo_url = profile.profile_pic_url
         
-        # Telegramga yuborish
+        # Telegramga rasmni yuborish
         caption = (
             f"👤 **Ism:** {profile.full_name}\n"
             f"🆔 **Username:** @{username}\n"
@@ -74,11 +79,12 @@ async def handle_message(message: types.Message):
         await status_msg.delete()
 
     except instaloader.exceptions.LoginRequiredException:
-        await status_msg.edit_text("❌ Instagram login talab qildi. Cookies faylini yangilang.")
+        await status_msg.edit_text("❌ Instagram login so'rayapti. Cookies (sessiya) ishlamadi.")
     except instaloader.exceptions.ProfileNotExistsException:
         await status_msg.edit_text("❌ Bunday profil topilmadi.")
     except Exception as e:
-        await status_msg.edit_text(f"⚠️ Xatolik yuz berdi. (Bloklangan bo'lishi mumkin)")
+        # Xatoni aniq ko'rish uchun
+        await status_msg.edit_text(f"⚠️ Xatolik: {str(e)[:50]}")
         print(f"DEBUG: {e}")
 
 if __name__ == '__main__':
