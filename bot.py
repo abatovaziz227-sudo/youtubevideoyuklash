@@ -3,7 +3,7 @@ import instaloader
 from aiogram import Bot, Dispatcher, types, executor
 
 # 1. BOT TOKENINGIZNI SHU YERGA QO'YING
-API_TOKEN = "8424991362:AAGTzrYZBVXM9RWDE6LN5HsnFerJecSzyRw" 
+API_TOKEN = "8688733724:AAEoV0ztlJ5JvTSyGiRYe_vtIN71gLftDjU" 
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
